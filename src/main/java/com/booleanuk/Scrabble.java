@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 public class Scrabble {
     private int score = 0;
     private String word;
+    private String regexLetters;
 
     private HashMap<Character, Integer> pointsMap = new HashMap<>();
     // TODO: Check meaning of final
@@ -30,6 +31,9 @@ public class Scrabble {
         fivePoints.forEach( letter -> pointsMap.put(letter, 5));
         eightPoints.forEach( letter -> pointsMap.put(letter, 8));
         tenPoints.forEach( letter -> pointsMap.put(letter, 10));
+
+        // Regex expressions
+        this.regexLetters = "[a-zA-Z]+";
     }
 
     public ArrayList<Integer> extractLettersWithRegex(String word, String regexPattern) {
@@ -92,6 +96,23 @@ public class Scrabble {
         return matcher.find();
     }
 
+    /**
+     * Calculate points for the given string of letters, the string should be provided with the surrounding brackets.
+     * After calculation, the function updates the score
+     * @param strLettersWithBrackets E.g. {[dog]}, [d]o{g} etc.
+     */
+    public void calculatePoints(String strLettersWithBrackets) {
+
+        // Extract only letters, escape brackets
+        strLettersWithBrackets = extractStringWithRegex(strLettersWithBrackets, this.regexLetters);
+
+        // Calculate double points
+        for (char letter : strLettersWithBrackets.toCharArray()) {
+            this.score += pointsMap.get(letter) * 2;
+        }
+    }
+
+
     public int score() {
 
         // Regex patterns
@@ -101,7 +122,7 @@ public class Scrabble {
         String regexNotValidDouble = "\\}.*?\\{|\\{.*?\\]";
         String regexNotValidTriple = "\\].*?\\[|\\[.*?\\}";
 //        String regexTriple = "\\[[^\\[].*?\\]";
-        String regexLetters = "[a-zA-Z]+";
+//        String regexLetters = "[a-zA-Z]+";
         String regexWordsWithSpecialCharacters = "[^a-zA-Z]+";  // Can include letters, special charaacters, brackets
 //        String regexOnlyLetters = "(?=[a-zA-Z]+)(?=[^a-zA-Z]+)";    // WRONG
         String regexNotLetters = "[^a-zA-Z]+";
@@ -136,7 +157,7 @@ public class Scrabble {
                 // Extract double letters, brackets included
                 String doubleLetters = extractStringWithRegex(this.word, regexDouble);
 
-                // Check for invalid duplication of letters inside brakcets, e.g. he{ll}o
+                // Check for invalid duplication of letters inside brackets, e.g. he{ll}o
                 boolean invalidDuplication = extractStringWithRegexBoolean(doubleLetters, regexDuplicationOfLetters);
                 if (invalidDuplication) {
                     return 0;
@@ -149,19 +170,20 @@ public class Scrabble {
                     return 0;
                 }
 
-                // Extract only letters, escape brackets
-                doubleLetters = extractStringWithRegex(doubleLetters, regexLetters);
-                // Calculate double points
-                for (char letter : doubleLetters.toCharArray()) {
-                    this.score += pointsMap.get(letter) * 2;
-                }
+//                // Extract only letters, escape brackets
+//                doubleLetters = extractStringWithRegex(doubleLetters, regexLetters);
+//                // Calculate double points
+//                for (char letter : doubleLetters.toCharArray()) {
+//                    this.score += pointsMap.get(letter) * 2;
+//                }
+                calculatePoints(doubleLetters);
             }
 
             if (isTriple) {
                 // Extract triple letters, brackets included
                 String tripleLetters = extractStringWithRegex(this.word, regexTriple);
 
-                // Check for invalid duplication of letters inside brakcets, e.g. he{ll}o
+                // Check for invalid duplication of letters inside brackets, e.g. he{ll}o
                 boolean invalidDuplication = extractStringWithRegexBoolean(tripleLetters, regexDuplicationOfLetters);
                 if (invalidDuplication) {
                     return 0;
