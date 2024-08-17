@@ -36,33 +36,14 @@ public class Scrabble {
         this.regexLetters = "[a-zA-Z]+";
     }
 
-    public ArrayList<Integer> extractLettersWithRegex(String word, String regexPattern) {
-        // TODO: Should I change to ordinary list to save memory? With just two elements.
-        ArrayList<Integer> output = new ArrayList<>();
-
-        Pattern pattern = Pattern.compile(regexPattern);
-        Matcher matcher = pattern.matcher(word);
-
-        boolean found = false;
-        while (matcher.find()) {
-            System.out.printf("I found the text" +
-                            " \"%s\" starting at " +
-                            "index %d and ending at index %d.%n",
-                    matcher.group(),
-                    matcher.start(),
-                    matcher.end());
-            found = true;
-            //output += matcher.group();
-            output.add(matcher.start());
-            output.add(matcher.end());
-        }
-        if(!found){
-            System.out.printf("No match found.%n");
-        }
-        System.out.println("text: " + output);
-        return output;
-    }
-
+    /**
+     * Outputs string after regex is applied to it.
+     * Most of the code is from Oracle's Java tutorial at: https://docs.oracle.com/javase/tutorial/essential/regex/test_harness.html
+     * It prints out information about the findings from the regex expression.
+     * @param word
+     * @param regexPattern
+     * @return
+     */
     public String extractStringWithRegex(String word, String regexPattern) {
 
         // Reference: https://docs.oracle.com/javase/tutorial/essential/regex/test_harness.html
@@ -101,38 +82,26 @@ public class Scrabble {
      * After calculation, the function updates the score
      * @param strLettersWithBrackets E.g. {[dog]}, [d]o{g} etc.
      */
-    public void calculatePoints(String strLettersWithBrackets) {
+    public void calculatePoints(String strLettersWithBrackets, int pointMultiplier) {
 
         // Extract only letters, escape brackets
         strLettersWithBrackets = extractStringWithRegex(strLettersWithBrackets, this.regexLetters);
 
         // Calculate double points
         for (char letter : strLettersWithBrackets.toCharArray()) {
-            this.score += pointsMap.get(letter) * 2;
+            this.score += pointsMap.get(letter) * pointMultiplier;
         }
     }
 
-
     public int score() {
 
-        // Regex patterns
+        // Regex patterns TODO: Should put this in the constructor as well
         // Regex tips https://regexr.com/
         String regexDouble = "\\{.*?\\}";
         String regexTriple = "\\[.*?\\]";
-        String regexNotValidDouble = "\\}.*?\\{|\\{.*?\\]";
-        String regexNotValidTriple = "\\].*?\\[|\\[.*?\\}";
-//        String regexTriple = "\\[[^\\[].*?\\]";
-//        String regexLetters = "[a-zA-Z]+";
-        String regexWordsWithSpecialCharacters = "[^a-zA-Z]+";  // Can include letters, special charaacters, brackets
-//        String regexOnlyLetters = "(?=[a-zA-Z]+)(?=[^a-zA-Z]+)";    // WRONG
-        String regexNotLetters = "[^a-zA-Z]+";
-        String regexNotLettersButBrackets = "[^a-zA-Z\\{\\}\\[\\]]+";
-        String regexInvalidBracketsLeftSquare = "\\[{1}";     // Check if only appear once
-        String regexInvalidBracketsLeftCurly = "\\{{1}";
-        String regexInvalidBracketsRightSquare = "\\]{1}";
-        String regexInvalidBracketsRightCurly = "\\}{1}";
 
-
+        // Can include letters, special characters, brackets
+        String regexWordsWithSpecialCharacters = "[^a-zA-Z]+";
 
         // Check for single occurrence of single bracket
         String regexLeftSquareBracket = "\\[{1}";
@@ -140,12 +109,8 @@ public class Scrabble {
         String regexLeftCurlyBracket = "\\{{1}";
         String regexRightCurlyBracket = "\\}{1}";
 
-
-
-
-        // TODO check if can replace with
-        String regexInvalidSingleBracket = "(\\{|\\})(\\[|\\]){1}";
-        String regexDuplicationOfLetters = "(\\w)\\1+";         // A sequence of the same letter e.g. "ll" in he{ll}o
+        // A sequence of the same letter e.g. "ll" in he{ll}o
+        String regexDuplicationOfLetters = "(\\w)\\1+";
 
         boolean isDouble = extractStringWithRegexBoolean(this.word, regexDouble);
         boolean isTriple = extractStringWithRegexBoolean(this.word, regexTriple);
@@ -170,13 +135,24 @@ public class Scrabble {
                     return 0;
                 }
 
-//                // Extract only letters, escape brackets
-//                doubleLetters = extractStringWithRegex(doubleLetters, regexLetters);
-//                // Calculate double points
-//                for (char letter : doubleLetters.toCharArray()) {
-//                    this.score += pointsMap.get(letter) * 2;
-//                }
-                calculatePoints(doubleLetters);
+                // Check if this double point sequence contains a sequence of nested triple points,
+                // if that is the case:
+                // - calculate triple points first
+                boolean containsTriple = extractStringWithRegexBoolean(doubleLetters, regexTriple);
+                if (containsTriple) {
+                    // Calculate nested triple separately (the letters are first tripled (*3) and then doubled (*2)
+                    String nestedTriple = extractStringWithRegex(doubleLetters, regexTriple);
+                    calculatePoints(nestedTriple, 3*2);
+
+                    // Remove it from doubleLetters to avoid duplication of points
+                    doubleLetters = doubleLetters.replace(nestedTriple, "");
+                }
+                // Calculate double points
+                calculatePoints(doubleLetters, 2);
+
+                // Remove this pair of curly brackets (Double points) and its content to avoid duplicated points {...} when moving on to checking triple points in next section
+                String originalDoubleLetters = extractStringWithRegex(this.word, regexDouble);
+                this.word = this.word.replace(originalDoubleLetters, "");
             }
 
             if (isTriple) {
@@ -197,12 +173,8 @@ public class Scrabble {
                     return 0;
                 }
 
-                // Extract only letters, escape brackets
-                tripleLetters = extractStringWithRegex(tripleLetters, regexLetters);
                 // Calculate triple points
-                for (char letter : tripleLetters.toCharArray()) {
-                    this.score += pointsMap.get(letter) * 3;
-                }
+                calculatePoints(tripleLetters, 3);
             }
 
             // Calculate ordinary/base points
@@ -215,69 +187,5 @@ public class Scrabble {
             return this.score;
         }
         return 0;
-
-
-        // Check invalid brackets
-//        boolean invalidDouble = extractStringWithRegexBoolean(this.word, regexNotValidDouble);
-//        boolean invalidTripel = extractStringWithRegexBoolean(this.word, regexNotValidTriple);
-//        if (invalidDouble || invalidTripel) {
-//            return this.score;
-//        }
-
-        // Check if there is only one occurence of { [ ] or }, with the help of an XOR gate (exclusive or)
-//        boolean invalidBracketLeftSquare = extractStringWithRegexBoolean(this.word, regexInvalidBracketsLeftSquare);
-//        boolean invalidBracketLeftCurly = extractStringWithRegexBoolean(this.word, regexInvalidBracketsLeftCurly);
-//        boolean invalidBracketRightSquare = extractStringWithRegexBoolean(this.word, regexInvalidBracketsRightSquare);
-//        boolean invalidBracketRightCurly = extractStringWithRegexBoolean(this.word, regexInvalidBracketsRightCurly);
-//        if (invalidBracketLeftSquare ^ invalidBracketRightSquare) {
-//            return this.score;
-//        }
-//        if (invalidBracketLeftCurly ^ invalidBracketRightCurly) {
-//            return this.score;
-//        }
-
-        // Check invalid when there is only one single bracket
-//        boolean invalidSingleBracket = extractStringWithRegexBoolean(this.word, regexInvalidSingleBracket);
-//        if (invalidSingleBracket) {
-//            return this.score;
-//        }
-//
-//        // Check if word has invalid tokens
-//        boolean invalidTokens = extractStringWithRegexBoolean(this.word, regexNotLettersButBrackets);
-//        if (invalidTokens) {
-//            return 0;
-//        }
-//
-//        // Invalid double letters in brackets e.g. "he{ll}o
-//        boolean invalidDoubleLettersInsideBrackets;
-//
-//        // Double points
-//        String doubleLetters = extractStringWithRegex(this.word, regexDouble);
-//        // Check if invalid
-//        invalidDoubleLettersInsideBrackets = extractStringWithRegexBoolean(doubleLetters, regexSameLetterSequence);
-//        if (invalidDoubleLettersInsideBrackets) {
-//            return this.score;
-//        }
-//        // Calculate double points
-//        doubleLetters = extractStringWithRegex(doubleLetters, regexOnlyLetters);    // Extract only letters, escape brackets
-//        for (char letter : doubleLetters.toCharArray()) {
-//            this.score += pointsMap.get(letter) * 2;
-//        }
-//
-//        // Calculate triple points
-//        String tripleLetters = extractStringWithRegex(this.word, regexTriple);
-//        tripleLetters = extractStringWithRegex(tripleLetters, regexOnlyLetters);    // Extract only letters, escape brackets
-//        for (char letter : tripleLetters.toCharArray()) {
-//            this.score += pointsMap.get(letter) * 3;
-//        }
-//
-//        // Calcualte ordinary/base points
-//        String baseLetters = this.word.replaceAll(regexDouble, "");     // Remove double points
-//        baseLetters = baseLetters.replaceAll(regexTriple, "");           // Remove triple points
-//        for (char letter : baseLetters.toCharArray()) {
-//            this.score += pointsMap.get(letter);
-//        }
-
-//        return this.score;
     }
 }
