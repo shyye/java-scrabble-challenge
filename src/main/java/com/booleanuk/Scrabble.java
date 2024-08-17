@@ -109,7 +109,19 @@ public class Scrabble {
         String regexInvalidBracketsLeftSquare = "\\[{1}";     // Check if only appear once
         String regexInvalidBracketsLeftCurly = "\\{{1}";
         String regexInvalidBracketsRightSquare = "\\]{1}";
-        String regexInvalidBracketsRightCurly = "\\}{ 1}";
+        String regexInvalidBracketsRightCurly = "\\}{1}";
+
+
+
+        // Check for single occurrence of single bracket
+        String regexLeftSquareBracket = "\\[{1}";
+        String regexRightSquareBracket = "\\]{1}";
+        String regexLeftCurlyBracket = "\\{{1}";
+        String regexRightCurlyBracket = "\\}{1}";
+
+
+
+
         // TODO check if can replace with
         String regexInvalidSingleBracket = "(\\{|\\})(\\[|\\]){1}";
         String regexDuplicationOfLetters = "(\\w)\\1+";         // A sequence of the same letter e.g. "ll" in he{ll}o
@@ -130,6 +142,13 @@ public class Scrabble {
                     return 0;
                 }
 
+                // Check for invalid single square brackets: if one but not both appear, with XOR (exclusive or)
+                boolean leftBracket = extractStringWithRegexBoolean(doubleLetters, regexLeftSquareBracket);
+                boolean rightBracket = extractStringWithRegexBoolean(doubleLetters, regexRightSquareBracket);
+                if (leftBracket ^ rightBracket) {
+                    return 0;
+                }
+
                 // Extract only letters, escape brackets
                 doubleLetters = extractStringWithRegex(doubleLetters, regexLetters);
                 // Calculate double points
@@ -145,6 +164,14 @@ public class Scrabble {
                 // Check for invalid duplication of letters inside brakcets, e.g. he{ll}o
                 boolean invalidDuplication = extractStringWithRegexBoolean(tripleLetters, regexDuplicationOfLetters);
                 if (invalidDuplication) {
+                    return 0;
+                }
+
+                // TODO: Refactor duplicate code
+                // Check for invalid single curly brackets: if one but not both appear, with XOR (exclusive or)
+                boolean leftBracket = extractStringWithRegexBoolean(tripleLetters, regexLeftCurlyBracket);
+                boolean rightBracket = extractStringWithRegexBoolean(tripleLetters, regexRightCurlyBracket);
+                if (leftBracket ^ rightBracket) {
                     return 0;
                 }
 
